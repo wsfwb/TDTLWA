@@ -58,6 +58,7 @@ Directory names are the original phase names, kept for provenance.
 metric_aligned_agent_phase_e11/   Backbone alignment + D3/V1/V3 residual controllers
   scripts/run_phase_e11.py          self-contained runner: snapshots TDTL, retrains
   scripts/benchmark_controllers.py  D3 implementation (PCA-32 + Ridge alpha=75, cap 0.15)
+  scripts/finalize_e11.py           provenance report: hashes + git status of TDTL
   scripts/pre_eval_alignment.py     Session-5 split identity preflight
 metric_aligned_agent_phase_e24/   Reasoner infrastructure (dry-run/transport layer)
   scripts/run_direct_reasoner.py    prompt builder + I1/I2/I3 input whitelists
@@ -66,6 +67,7 @@ metric_aligned_agent_phase_e24/   Reasoner infrastructure (dry-run/transport lay
 metric_aligned_agent_phase_e26/   The 3×1,623 real reasoner call round
   scripts/run_e26.py                main loop (cache-aware, resumable)
   scripts/input_contract.py         per-interface input construction
+  scripts/evaluate_e26_offline.py   frozen cache-only evaluation (W-F1 + bootstrap)
   scripts/supervise_e26.py          supervised execution with rate control
 metric_aligned_agent_phase_e27/   First-layer fusion search over the cache
 metric_aligned_agent_phase_e29r/  Targeted rescue round (+200 calls, adjudicator prompts)
