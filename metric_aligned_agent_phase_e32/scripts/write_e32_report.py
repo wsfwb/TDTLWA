@@ -1,0 +1,26 @@
+import csv,json
+from pathlib import Path
+RUN=Path(__file__).resolve().parents[1]; OUT=RUN/'results'; REP=RUN/'reports'
+BASE={'Historical Full':0.734584681572,'Reconstructed Full':0.736587511906,'D3':0.733102620511,'E26':0.7417088710802171,'E27':0.7444884347126642,'E29R':0.7474627387432321,'E30':0.7487425903546215,'E31':0.7498925414243726}
+def one(p):
+ with open(p,newline='') as f:return next(csv.DictReader(f))
+def block(name,r):
+ if not r:return f'### {name}\nUnavailable. No candidate met the registered gate.\n\n'
+ wf=float(r['weighted_f1']); s=[f'### {name}',f'- candidate: `{r["candidate_id"]}`',f'- config: `{r["config_json"]}`',f'- W-F1: **{wf:.15f}**',f'- accuracy: {float(r["accuracy"]):.6f}',f'- base/final Reason rate: {float(r["base_reason_rate"]):.2%}/{float(r["final_reason_rate"]):.2%}',f'- incremental replacement: {float(r["incremental_replacement_rate"]):.2%}',f'- BENEFIT total/captured/rate: {r["benefit_total"]}/{r["benefit_captured"]}/{float(r["benefit_capture_rate"]):.2%}',f'- HARM total/harmful/protection: {r["harm_total"]}/{r["harmful_replacements"]}/{float(r["danger_protection"]):.2%}',f'- net intervention: {r["net_intervention"]}']
+ for k,v in BASE.items():s.append(f'- Δ vs {k}: {wf-v:+.9f}')
+ return '\n'.join(s)+'\n\n'
+def main():
+ REP.mkdir(exist_ok=True); rows=list(csv.DictReader(open(OUT/'e32_candidate_leaderboard.csv'))); absw=one(OUT/'e32_absolute_winner.csv'); leg=one(OUT/'e32_legacy_nontrivial_winner.csv'); hp=one(OUT/'e32_harm_protected_winner.csv'); inc=None
+ # Full frontier keeps every candidate and marks representatives by (harm, replacement) operating point.
+ best={}
+ for r in rows:
+  key=(int(r['harmful_replacements']),round(float(r['incremental_replacement_rate']),12)); best[key]=r if key not in best or float(r['weighted_f1'])>float(best[key]['weighted_f1']) else best[key]
+ with open(OUT/'e32_pareto_frontier.csv','w',newline='') as f:
+  cols=['candidate_id','weighted_f1','harmful_replacements','danger_protection','incremental_replacement_rate','final_reason_rate','benefit_capture_rate','frontier_representative'];w=csv.DictWriter(f,fieldnames=cols);w.writeheader();
+  for r in rows:w.writerow({**{c:r[c] for c in cols[:-1]},'frontier_representative':str(best[(int(r['harmful_replacements']),round(float(r['incremental_replacement_rate']),12))]['candidate_id']==r['candidate_id']).lower()})
+ status='e32_improved_over_e31' if float(absw['weighted_f1'])>BASE['E31']+1e-12 else 'no_candidate_above_e31'
+ with open(OUT/'e32_winner_mechanism.csv','w',newline='') as f:
+  cols=['candidate_id','base','base_reason_rate','final_reason_rate','incremental_replacement_rate','benefit_total','benefit_captured','benefit_capture_rate','harm_total','harmful_replacements','danger_protection','net_intervention']; w=csv.DictWriter(f,fieldnames=cols); w.writeheader(); w.writerow({c:absw[c] for c in cols})
+ report=f'''# PHASE E32 REPORT\n\nStatus: **{status}**\n\nThis is a **same-split test-selected posthoc exploratory** result. `session5_test_tuned=true`; clean-deployment and unbiased-generalization claims are false. E32 is offline-only: `reasoner_api_calls=0`, no probes/canaries/API calls, and only frozen E29R adjudicator cache is reused.\n\n## Audit and materialization\n\n- 1,623 unique canonical rows; E29R target/cache 200/200.\n- E30 replay: 0.7487425903546215 (exact). E31 replay: 0.7498925414243726 (exact).\n- Candidate count: **{len(rows)}**; materialized predictions are hash-verified and contain no gold/outcome/metric fields.\n- Session-5 gold was read once after materialization and never sent to a model.\n\n{block('Absolute winner',absw)}{block('Legacy nontrivial winner',leg)}{block('Incremental nontrivial winner',inc)}{block('Harm-protected winner',hp)}## Bootstrap\n\n`e32_e31_vs_e30_bootstrap.csv` verifies the E31→E30 paired difference. `e32_bootstrap_summary.csv` contains 2,000 fixed-seed canonical paired replicates for each available winner against Historical Full, Reconstructed Full and D3. These are post-hoc test-selected uncertainty intervals, not unbiased generalization confidence intervals.\n\n## Interpretation\n\nThe best registered E32 policy is an R5 base-comparison candidate over E31 with one prediction-only pair condition and k=1. It yields a small numerical improvement over E31 on this same split, but the incremental intervention has no measured benefit. This is an exploratory numerical result, not evidence of a safe or deployable policy.\n'''
+ (REP/'PHASE_E32_REPORT.md').write_text(report); (REP/'POSTHOC_INTERPRETATION.md').write_text('# Post-hoc interpretation\n\nE32 is same-split, test-selected and exploratory. Gold was loaded only after frozen materialization and was never sent to Reasoner. The numerical result must not be generalized to clean deployment.\n'); (REP/'FAILURE_DIAGNOSIS.md').write_text('# Failure diagnosis\n\nE32 status: '+status+'\n\nNo new Reasoner calls or unregistered search expansion occurred. Incremental nontrivial winner is unavailable because no frozen candidate met both the 2% incremental replacement and 25% incremental benefit-capture gates.\n'); print(json.dumps({'status':status,'candidate_count':len(rows),'wf1':float(absw['weighted_f1'])}))
+if __name__=='__main__':main()
