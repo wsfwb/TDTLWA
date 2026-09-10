@@ -5,8 +5,13 @@ Pure-code snapshot of the LLM-reasoner cache fusion pipeline that produced
 starting from a TDTL baseline of **0.734585**.
 
 This repository contains **only pipeline code** — no datasets, no model weights,
-no LLM response caches, and no TDTL backbone code. See
-[TDTL interface](#tdtl-interface-contract) for the contract the backbone must satisfy.
+no LLM response caches, and no TDTL backbone code.
+
+- **[DESIGN.md](DESIGN.md)** — the method narrative: why each phase exists, label
+  conventions, interface rationale, fusion-search design, leak-prevention, glossary.
+- **[protocol/](protocol/)** — the frozen LLM I/O contracts (output JSON schemas,
+  gated call sequence, retry/failure policy).
+- [TDTL interface](#tdtl-interface-contract) — the contract the backbone must satisfy.
 
 ## Pipeline at a glance
 
